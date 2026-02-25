@@ -1,0 +1,17 @@
+install python 3.7.0 and i did all settings inside hello-eth ethereum tool
+
+
+install node-v12.13.1-64.msi software 
+then install packages from requirements.txt file
+
+i did all setup just follow screens shots
+
+blockchain server can be start from hello-eth folder and server starting details are already given in screenshots
+
+After contract deployment in etherum black window you will get contract address under Agricukture section and that contract
+address you replace in Agriculture/AgricultureApp/views.py python file
+
+in CrimeTip/CrimeApp/views.py file you can see contract address like '0xd374Cb05bd6187D6cF905D7bBD85f2b704fBDD29' 
+this at line no 31, 53 and 79 and just replace this with new contract address
+
+python application can be started from Agriculture/AgricultureApp/run.bat, just double click on 'runServer.bat' file
