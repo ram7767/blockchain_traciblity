@@ -49,10 +49,33 @@ def generate_product_qr(product, base_url='http://127.0.0.1:8000'):
 def get_ngrok_url():
     """
     Get the current ngrok public URL if available.
+    Scans ngrok agent API on ports 4040-4045 (ngrok auto-increments when port is taken),
+    then falls back to pyngrok.
 
     Returns:
         Public ngrok URL string, or None if ngrok is not running.
     """
+    # Method 1: Query ngrok agent API on ports 4040-4045
+    # ngrok auto-increments the web interface port when 4040 is already taken.
+    # We scan all possible ports and return the first one with active tunnels.
+    import requests
+    for port in range(4040, 4046):
+        try:
+            resp = requests.get(f'http://127.0.0.1:{port}/api/tunnels', timeout=1)
+            if resp.status_code == 200:
+                data = resp.json()
+                tunnels = data.get('tunnels', [])
+                for tunnel in tunnels:
+                    public_url = tunnel.get('public_url', '')
+                    if public_url.startswith('https://'):
+                        return public_url
+                # If tunnels exist but none is https, return the first one
+                if tunnels:
+                    return tunnels[0].get('public_url', '')
+        except Exception:
+            continue
+
+    # Method 2: Check pyngrok managed tunnels (fallback)
     try:
         from pyngrok import ngrok
         tunnels = ngrok.get_tunnels()
@@ -63,4 +86,5 @@ def get_ngrok_url():
             return tunnels[0].public_url
     except Exception:
         pass
+
     return None
