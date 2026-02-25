@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Product{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-md-7">
+        <div class="form-card animate-in">
+            <div class="text-center mb-4">
+                <i class="bi bi-plus-circle display-4 text-accent"></i>
+                <h3 class="mt-2" style="font-weight: 700;">Add New Product</h3>
+                <p class="text-muted-custom">Add your agricultural product with traceability information</p>
+            </div>
+
+            <form method="post" action="{% url 'farmer_add_product' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Product Name *</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g., Organic Tomatoes"
+                            required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Category</label>
+                        <select name="category" class="form-select">
+                            <option value="Fruits">🍎 Fruits</option>
+                            <option value="Vegetables">🥬 Vegetables</option>
+                            <option value="Grains">🌾 Grains</option>
+                            <option value="Dairy">🥛 Dairy</option>
+                            <option value="Other">📦 Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Price (₹) *</label>
+                        <input type="number" name="price" class="form-control" step="0.01" placeholder="0.00" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Quantity *</label>
+                        <input type="number" name="quantity" class="form-control" step="0.01" placeholder="0" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Harvest Date</label>
+                        <input type="date" name="harvest_date" class="form-control">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control" rows="3"
+                            placeholder="Describe your product — quality, farming method, certifications..."></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Origin Location</label>
+                        <input type="text" name="origin_location" class="form-control"
+                            placeholder="Farm address or coordinates">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Product Image</label>
+                        <input type="file" name="image" class="form-control" accept="image/*">
+                    </div>
+
+                    <!-- Initial Transport Log -->
+                    <div class="col-12 mt-4">
+                        <h5 style="font-weight: 600;"><i class="bi bi-truck text-accent me-2"></i>Initial Transport Log
+                        </h5>
+                        <p class="text-muted-custom small">Where was this product harvested/packed?</p>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Harvest/Pack Location</label>
+                        <input type="text" name="transport_location" class="form-control"
+                            placeholder="Location where product was harvested or packed">
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary flex-grow-1">
+                        <i class="bi bi-check-circle me-2"></i>Add Product
+                    </button>
+                    <a href="{% url 'farmer_dashboard' %}" class="btn btn-outline-light">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

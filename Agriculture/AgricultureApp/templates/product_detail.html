@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block main_class %}{% endblock %}
+
+{% block content %}
+<!-- Product Detail Hero -->
+<div class="detail-hero">
+    <div class="container">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-5">
+                {% if product.image %}
+                <img src="/media/{{ product.image }}" class="detail-image" alt="{{ product.name }}">
+                {% else %}
+                <div class="placeholder-img detail-image" style="height: 350px; border-radius: var(--radius-lg);">
+                    <i class="bi bi-flower1" style="font-size: 5rem;"></i>
+                </div>
+                {% endif %}
+            </div>
+            <div class="col-lg-7">
+                <span class="product-badge mb-3 d-inline-block">{{ product.category }}</span>
+                <h1 class="mb-2" style="font-weight: 800; font-size: 2.5rem;">{{ product.name }}</h1>
+                <p class="text-accent mb-3" style="font-size: 1.1rem;">
+                    <i class="bi bi-person-badge me-1"></i>by {{ farmer.username }}
+                </p>
+
+                <p class="mb-4" style="color: var(--text-secondary); line-height: 1.8;">
+                    {{ product.description|default:"Fresh agricultural product with verified traceability on the
+                    blockchain." }}
+                </p>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-4">
+                        <div class="info-card text-center">
+                            <div class="info-label">Price</div>
+                            <div class="info-value text-accent">₹{{ product.price }}</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="info-card text-center">
+                            <div class="info-label">Available</div>
+                            <div class="info-value">{{ product.quantity }}</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="info-card text-center">
+                            <div class="info-label">Origin</div>
+                            <div class="info-value" style="font-size: 0.9rem;">{{ product.origin_location|default:"Local
+                                Farm" }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if user_type == 'Consumer' %}
+                <a href="{% url 'consumer_purchase' product.pk %}" class="btn btn-accent btn-lg">
+                    <i class="bi bi-cart-plus me-2"></i>Purchase
+                </a>
+                {% elif not current_user and user_type != 'Admin' %}
+                <a href="{% url 'login' %}" class="btn btn-accent btn-lg">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Login to Purchase
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Details Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row g-5">
+            <!-- Farmer Details -->
+            <div class="col-lg-4">
+                <h4 class="mb-3"><i class="bi bi-person-badge text-accent me-2"></i>Farmer Details</h4>
+                <div class="info-card mb-3">
+                    <div class="info-label">Name</div>
+                    <div class="info-value">{{ farmer.username }}</div>
+                </div>
+                <div class="info-card mb-3">
+                    <div class="info-label">Location</div>
+                    <div class="info-value">{{ farmer.address|default:"Not specified" }}</div>
+                </div>
+                <div class="info-card mb-3">
+                    <div class="info-label">Contact</div>
+                    <div class="info-value">{{ farmer.contact|default:"Not specified" }}</div>
+                </div>
+                {% if product.harvest_date %}
+                <div class="info-card mb-3">
+                    <div class="info-label">Harvest Date</div>
+                    <div class="info-value">{{ product.harvest_date }}</div>
+                </div>
+                {% endif %}
+                {% if product.blockchain_hash %}
+                <div class="info-card mb-3">
+                    <div class="info-label"><i class="bi bi-link-45deg me-1"></i>Blockchain Hash</div>
+                    <div class="info-value" style="font-size: 0.75rem; word-break: break-all;">{{
+                        product.blockchain_hash }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Transport Timeline -->
+            <div class="col-lg-5">
+                <h4 class="mb-3"><i class="bi bi-truck text-accent me-2"></i>Supply Chain Journey</h4>
+                {% if transport_logs %}
+                <div class="timeline">
+                    {% for log in transport_logs %}
+                    <div class="timeline-item">
+                        <div class="timeline-dot {% if forloop.last %}active{% endif %}"></div>
+                        <div class="timeline-content">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <span class="timeline-stage">{{ log.get_stage_display }}</span>
+                                <span class="timeline-time">{{ log.timestamp|date:"M d, Y H:i" }}</span>
+                            </div>
+                            <div class="timeline-location mt-1">
+                                <i class="bi bi-geo-alt me-1"></i>{{ log.location }}
+                            </div>
+                            {% if log.handler %}
+                            <div class="timeline-location">
+                                <i class="bi bi-person me-1"></i>{{ log.handler }}
+                            </div>
+                            {% endif %}
+                            {% if log.notes %}
+                            <div class="mt-1" style="color: var(--text-muted); font-size: 0.8rem;">{{ log.notes }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="info-card text-center py-4">
+                    <i class="bi bi-clock-history display-4 text-muted-custom"></i>
+                    <p class="text-muted-custom mt-2 mb-0">No transport logs yet</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- QR Code & Share -->
+            <div class="col-lg-3">
+                <h4 class="mb-3"><i class="bi bi-qr-code text-accent me-2"></i>Scan & Share</h4>
+                <div class="info-card text-center">
+                    {% if product.qr_code %}
+                    <div class="qr-container mb-3">
+                        <img src="/media/{{ product.qr_code }}" alt="Product QR Code">
+                    </div>
+                    {% endif %}
+                    <p class="small mb-2" style="color: var(--text-muted);">Shareable Link:</p>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control" value="{{ share_url }}" id="shareUrl" readonly>
+                        <button class="btn btn-accent" onclick="copyUrl()" title="Copy">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function copyUrl() {
+        var input = document.getElementById('shareUrl');
+        input.select();
+        document.execCommand('copy');
+        alert('URL copied to clipboard!');
+    }
+</script>
+{% endblock %}

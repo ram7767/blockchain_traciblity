@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-md-5">
+        <div class="form-card animate-in">
+            <div class="text-center mb-4">
+                <i class="bi bi-shield-lock display-4 text-accent"></i>
+                <h3 class="mt-2" style="font-weight: 700;">Welcome Back</h3>
+                <p class="text-muted-custom">Login to your AgriChain account</p>
+            </div>
+
+            <form method="post" action="{% url 'login' %}">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label">Role</label>
+                    <select name="user_type" class="form-select" required>
+                        <option value="Farmer">🌾 Farmer</option>
+                        <option value="Consumer">🛒 Consumer</option>
+                        <option value="Admin">🔐 Admin</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Username</label>
+                    <input type="text" name="username" class="form-control" placeholder="Enter username" required>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Password</label>
+                    <input type="password" name="password" class="form-control" placeholder="Enter password" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 mb-3">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Login
+                </button>
+
+                <p class="text-center mb-0" style="color: var(--text-muted);">
+                    Don't have an account? <a href="{% url 'register' %}" class="text-accent">Register here</a>
+                </p>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

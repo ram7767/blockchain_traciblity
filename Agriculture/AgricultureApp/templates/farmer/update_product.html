@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Update {{ product.name }}{% endblock %}
+
+{% block content %}
+<div class="mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="section-header"><i class="bi bi-pencil-square text-accent me-2"></i>{{ product.name }}</h2>
+            <p class="section-subheader mb-0">Update quantity and manage transport logs</p>
+        </div>
+        <a href="{% url 'farmer_dashboard' %}" class="btn btn-outline-light btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Product Info & Update Qty -->
+        <div class="col-lg-5">
+            <div class="form-card mb-4">
+                <h5 style="font-weight: 700;" class="mb-3"><i class="bi bi-info-circle text-accent me-2"></i>Product
+                    Info</h5>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <div class="info-label">Category</div>
+                        <div class="info-value">{{ product.category }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="info-label">Price</div>
+                        <div class="info-value text-accent">₹{{ product.price }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="info-label">Current Qty</div>
+                        <div class="info-value">{{ product.quantity }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="info-label">Origin</div>
+                        <div class="info-value" style="font-size: 0.9rem;">{{ product.origin_location|default:"-" }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <h5 style="font-weight: 700;" class="mb-3"><i class="bi bi-plus-circle text-accent me-2"></i>Update
+                    Quantity</h5>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_quantity">
+                    <div class="mb-3">
+                        <label class="form-label">Add Quantity</label>
+                        <input type="number" name="quantity" class="form-control" step="0.01"
+                            placeholder="Enter quantity to add" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-arrow-up-circle me-2"></i>Update Quantity
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Transport Logs -->
+        <div class="col-lg-7">
+            <div class="form-card mb-4">
+                <h5 style="font-weight: 700;" class="mb-3"><i class="bi bi-truck text-accent me-2"></i>Add Transport Log
+                </h5>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_transport">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Stage *</label>
+                            <select name="stage" class="form-select" required>
+                                <option value="Harvested">🌱 Harvested</option>
+                                <option value="Packed">📦 Packed</option>
+                                <option value="InTransit">🚚 In Transit</option>
+                                <option value="AtWarehouse">🏭 At Warehouse</option>
+                                <option value="Delivered">✅ Delivered</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Location *</label>
+                            <input type="text" name="location" class="form-control" placeholder="Current location"
+                                required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Handler</label>
+                            <input type="text" name="handler" class="form-control"
+                                placeholder="Person/company handling">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Notes</label>
+                            <input type="text" name="notes" class="form-control" placeholder="Additional notes">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 mt-3">
+                        <i class="bi bi-plus-circle me-2"></i>Add Log Entry
+                    </button>
+                </form>
+            </div>
+
+            <!-- Timeline -->
+            <h5 style="font-weight: 700;" class="mb-3"><i class="bi bi-clock-history text-accent me-2"></i>Journey
+                Timeline</h5>
+            {% if transport_logs %}
+            <div class="timeline">
+                {% for log in transport_logs %}
+                <div class="timeline-item">
+                    <div class="timeline-dot {% if forloop.last %}active{% endif %}"></div>
+                    <div class="timeline-content">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <span class="timeline-stage">{{ log.get_stage_display }}</span>
+                            <span class="timeline-time">{{ log.timestamp|date:"M d, Y H:i" }}</span>
+                        </div>
+                        <div class="timeline-location mt-1"><i class="bi bi-geo-alt me-1"></i>{{ log.location }}</div>
+                        {% if log.handler %}<div class="timeline-location"><i class="bi bi-person me-1"></i>{{
+                            log.handler }}</div>{% endif %}
+                        {% if log.notes %}<div class="mt-1" style="color: var(--text-muted); font-size: 0.8rem;">{{
+                            log.notes }}</div>{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="info-card text-center py-4">
+                <i class="bi bi-clock-history display-4 text-muted-custom"></i>
+                <p class="text-muted-custom mt-2 mb-0">No transport logs yet — add one above</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,41 +1,121 @@
+{% extends 'base.html' %}
 {% load static %}
-<html>
-<head>
-<title>Blockchain Traceability for Sustainable Agriculture</title>
-<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<link rel="stylesheet" type="text/css" href="{% static 'style.css' %}"/>
-</head>
-<body>
-<div id="wrapper">
-	<div id="header">
-		<div id="logo">
-			<center><font size="4" color="yellow">Blockchain Traceability for Sustainable Agriculture</font></center>
-		</div>
-		<div id="slogan">
-			
-		</div>
-	</div>
-	<div id="menu">
-		<ul><center>
-	  <li><a href="{% url 'index' %}">Home</a></li>
-      <li><a href="{% url 'AdminLogin' %}">Admin Login</a></li>
-	  <li><a href="{% url 'FarmerLogin' %}">Farmer Login</a></li>
-	  <li><a href="{% url 'ConsumerLogin' %}">Consumer Login</a></li>
-      <li><a href="{% url 'Register' %}">Register Here</a></li>
-			
-		</center></ul>
-		<br class="clearfix" />
-	</div>
-	<div id="splash">
-		<img class="pic" src="{% static 'images/investor.jpg' %}" width="870" height="230" alt="" />
-	</div>
-	<br/>
-	<p align="justify"><font size="3" style="font-family: Comic Sans MS" color="black">
-		Abstract:- Traditional traceability system has problems of centralized management, opaque information, untrustworthy data, and easy generation of information. To solve the above problems, we are designing a traceability system based on blockchain technology for storage and query of product information in supply chain of agricultural products. Leveraging the characteristics of decentralization, tamper-proof. In addition, we design a reputation-based smart contract to  network nodes to upload traceability data.
-</p>
 
-<p align="justify"><font size="3" style="font-family: Comic Sans MS" color="black">
-		Ethereum is a decentralized, open-source blockchain platform that allows developers to build and deploy smart contracts and decentralized applications  Furthermore, we provide performance analysis and practical application, the results    show that our system improves the query efficiency and the security of private information, the authenticity and reliability of data in supply chain management in agriculture.
-</p>
-</body>
-</html>
+{% block main_class %}{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+	<div class="container position-relative">
+		<div class="row align-items-center">
+			<div class="col-lg-7 animate-in">
+				<span class="product-badge mb-3 d-inline-block">
+					<i class="bi bi-shield-check me-1"></i>Blockchain Verified
+				</span>
+				<h1 class="hero-title mb-3">
+					From Farm to Fork,<br>
+					<span style="color: var(--accent-glow);">Fully Traceable.</span>
+				</h1>
+				<p class="hero-subtitle mb-4">
+					Track every step of your food's journey with blockchain-powered transparency.
+					Know your farmer, verify the origin, and ensure sustainable practices.
+				</p>
+				<div class="d-flex gap-3">
+					<a href="#products" class="btn btn-accent btn-lg px-4">
+						<i class="bi bi-grid-3x3-gap me-2"></i>Browse Products
+					</a>
+					{% if not current_user and user_type != 'Admin' %}
+					<a href="{% url 'register' %}" class="btn btn-outline-light btn-lg px-4">
+						<i class="bi bi-person-plus me-2"></i>Get Started
+					</a>
+					{% endif %}
+				</div>
+			</div>
+			<div class="col-lg-5 text-center mt-4 mt-lg-0">
+				<img src="{% static 'images/investor.jpg' %}" alt="Agriculture"
+					style="border-radius: 20px; max-width: 100%; border: 2px solid var(--border-color);">
+			</div>
+		</div>
+	</div>
+</section>
+
+<!-- Stats Section -->
+<section class="py-5" style="background: var(--primary);">
+	<div class="container">
+		<div class="row g-4">
+			<div class="col-md-4">
+				<div class="stat-card">
+					<div class="stat-number">{{ total_farmers }}</div>
+					<div class="stat-label"><i class="bi bi-person-workspace me-1"></i>Registered Farmers</div>
+				</div>
+			</div>
+			<div class="col-md-4">
+				<div class="stat-card">
+					<div class="stat-number">{{ total_products }}</div>
+					<div class="stat-label"><i class="bi bi-box-seam me-1"></i>Available Products</div>
+				</div>
+			</div>
+			<div class="col-md-4">
+				<div class="stat-card">
+					<div class="stat-number">{{ total_consumers }}</div>
+					<div class="stat-label"><i class="bi bi-people me-1"></i>Happy Consumers</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<!-- Products Section -->
+<section class="py-5" id="products">
+	<div class="container">
+		<h2 class="section-header"><i class="bi bi-grid-3x3-gap me-2 text-accent"></i>Fresh Products</h2>
+		<p class="section-subheader">Browse products directly from verified farmers — no login required</p>
+
+		{% if products %}
+		<div class="row g-4">
+			{% for product in products %}
+			<div class="col-sm-6 col-lg-4 col-xl-3">
+				<div class="product-card">
+					{% if product.image %}
+					<img src="/media/{{ product.image }}" class="card-img-top" alt="{{ product.name }}">
+					{% else %}
+					<div class="placeholder-img card-img-top">
+						<i class="bi bi-flower1"></i>
+					</div>
+					{% endif %}
+
+					<div class="card-body">
+						<div class="d-flex justify-content-between align-items-start mb-2">
+							<span class="product-badge">{{ product.category }}</span>
+							{% if product.quantity > 0 %}
+							<span class="product-badge"
+								style="background: rgba(42,157,143,0.15); color: var(--success);">In Stock</span>
+							{% endif %}
+						</div>
+
+						<h5 class="card-title">{{ product.name }}</h5>
+						<p class="card-text small mb-2">
+							<i class="bi bi-person-badge me-1"></i>{{ product.farmer.username }}
+						</p>
+
+						<div class="d-flex justify-content-between align-items-center mt-3">
+							<span class="product-price">₹{{ product.price }}</span>
+							<a href="{% url 'product_detail' product.pk %}" class="btn btn-sm btn-accent">
+								<i class="bi bi-eye me-1"></i>View
+							</a>
+						</div>
+					</div>
+				</div>
+			</div>
+			{% endfor %}
+		</div>
+		{% else %}
+		<div class="text-center py-5">
+			<i class="bi bi-inbox display-1 text-muted-custom"></i>
+			<h4 class="mt-3 text-muted-custom">No products available yet</h4>
+			<p class="text-muted-custom">Farmers are adding products soon. Check back later!</p>
+		</div>
+		{% endif %}
+	</div>
+</section>
+{% endblock %}

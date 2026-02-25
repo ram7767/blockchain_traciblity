@@ -1,521 +1,455 @@
-from django.shortcuts import render
-from django.template import RequestContext
+"""
+AgricultureApp Views — Clean, modular view functions.
+Organized by: Public, Auth, Admin, Farmer, Consumer sections.
+"""
+
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.http import HttpResponse
 from django.core.files.storage import FileSystemStorage
-import os
+from django.conf import settings
+from django.utils import timezone
 from datetime import date
 import os
-import json
-from web3 import Web3, HTTPProvider
-import os
-from django.core.files.storage import FileSystemStorage
-import pickle
-import pyqrcode
-import png
-from pyqrcode import QRCode
+import logging
 
-global details, username
-details=''
-global contract, product_name
+from .models import UserProfile, Product, TransportLog, Purchase
+from .decorators import login_required_custom, admin_required, farmer_required, consumer_required
+from .services.blockchain_service import blockchain
+from .services.qr_service import generate_product_qr, get_ngrok_url
+
+logger = logging.getLogger(__name__)
 
 
-def readDetails(contract_type):
-    global details
-    details = ""
-    print(contract_type+"======================")
-    blockchain_address = 'http://127.0.0.1:9545' #Blokchain connection IP
-    web3 = Web3(HTTPProvider(blockchain_address))
-    web3.eth.defaultAccount = web3.eth.accounts[0]
-    compiled_contract_path = 'Agricultural.json' #agriculture contract code
-    deployed_contract_address = '0xd374Cb05bd6187D6cF905D7bBD85f2b704fBDD29' #hash address to access agriculture contract
-    with open(compiled_contract_path) as file:
-        contract_json = json.load(file)  # load contract info as JSON
-        contract_abi = contract_json['abi']  # fetch contract's abi - necessary to call its functions
-    file.close()
-    contract = web3.eth.contract(address=deployed_contract_address, abi=contract_abi) #now calling contract to access data
-    if contract_type == 'signup':
-        details = contract.functions.getUser().call()
-    if contract_type == 'addproduct':
-        details = contract.functions.getTracingData().call()
-    if contract_type == 'purchase':
-        details = contract.functions.getPurchase().call()     
-    print(details)    
+# ============================================================
+# Helper Functions
+# ============================================================
 
-def saveDataBlockChain(currentData, contract_type):
-    global details
-    global contract
-    details = ""
-    blockchain_address = 'http://127.0.0.1:9545'
-    web3 = Web3(HTTPProvider(blockchain_address))
-    web3.eth.defaultAccount = web3.eth.accounts[0]
-    compiled_contract_path = 'Agricultural.json' #agriculture contract file
-    deployed_contract_address = '0xd374Cb05bd6187D6cF905D7bBD85f2b704fBDD29' #contract address
-    with open(compiled_contract_path) as file:
-        contract_json = json.load(file)  # load contract info as JSON
-        contract_abi = contract_json['abi']  # fetch contract's abi - necessary to call its functions
-    file.close()
-    contract = web3.eth.contract(address=deployed_contract_address, abi=contract_abi)
-    readDetails(contract_type)
-    if contract_type == 'signup':
-        details+=currentData
-        msg = contract.functions.addUser(details).transact()
-        tx_receipt = web3.eth.waitForTransactionReceipt(msg)
-    if contract_type == 'addproduct':
-        details+=currentData
-        msg = contract.functions.setTracingData(details).transact()
-        tx_receipt = web3.eth.waitForTransactionReceipt(msg)
-    if contract_type == 'purchase':
-        details+=currentData
-        msg = contract.functions.setPurchase(details).transact()
-        tx_receipt = web3.eth.waitForTransactionReceipt(msg)    
-    
+def get_current_user(request):
+    """Get the current logged-in UserProfile from session."""
+    user_id = request.session.get('user_id')
+    if user_id:
+        try:
+            return UserProfile.objects.get(pk=user_id, is_active=True)
+        except UserProfile.DoesNotExist:
+            pass
+    return None
 
-def updateQuantityBlock(currentData):
-    blockchain_address = 'http://127.0.0.1:9545'
-    web3 = Web3(HTTPProvider(blockchain_address))
-    web3.eth.defaultAccount = web3.eth.accounts[0]
-    compiled_contract_path = 'Agricultural.json' #student contract file
-    deployed_contract_address = '0xd374Cb05bd6187D6cF905D7bBD85f2b704fBDD29' #contract address
-    with open(compiled_contract_path) as file:
-        contract_json = json.load(file)  # load contract info as JSON
-        contract_abi = contract_json['abi']  # fetch contract's abi - necessary to call its functions
-    file.close()
-    contract = web3.eth.contract(address=deployed_contract_address, abi=contract_abi)
-    msg = contract.functions.setTracingData(currentData).transact()
-    tx_receipt = web3.eth.waitForTransactionReceipt(msg)
 
-def ViewSales(request):
-    if request.method == 'GET':
-        output = '<table border=1 align=center>'
-        output+='<tr><th><font size=3 color=black>Consumer Name</font></th>'
-        output+='<th><font size=3 color=black>Farmer Name</font></th>'
-        output+='<th><font size=3 color=black>Product Name</font></th>'
-        output+='<th><font size=3 color=black>Quantity</font></th>'
-        output+='<th><font size=3 color=black>Amount</font></th>'
-        output+='<th><font size=3 color=black>Card Details</font></th>'
-        output+='<th><font size=3 color=black>CVV</font></th>'
-        output+='<th><font size=3 color=black>Purchase Date</font></th></tr>'
-        readDetails("purchase")
-        rows = details.split("\n")
-        for i in range(len(rows)-1):
-            arr = rows[i].split("#")
-            output+='<tr><td><font size=3 color=black>'+arr[0]+'</font></td>'
-            output+='<td><font size=3 color=black>'+arr[1]+'</font></td>'
-            output+='<td><font size=3 color=black>'+str(arr[2])+'</font></td>'
-            output+='<td><font size=3 color=black>'+str(arr[3])+'</font></td>'
-            output+='<td><font size=3 color=black>'+str(arr[4])+'</font></td>'
-            output+='<td><font size=3 color=black>'+str(arr[5])+'</font></td>'
-            output+='<td><font size=3 color=black>'+str(arr[6])+'</font></td>'
-            output+='<td><font size=3 color=black>'+str(arr[7])+'</font></td></tr>'                    
-        output+="</table><br/><br/><br/><br/><br/><br/>"
-        context= {'data':output}
-        return render(request, 'AdminScreen.html', context)
+def get_base_context(request):
+    """Build base context dict with user info for all templates."""
+    user = get_current_user(request)
+    return {
+        'current_user': user,
+        'user_type': request.session.get('user_type', ''),
+        'blockchain_status': blockchain.is_available,
+    }
 
-def ViewFarmerSales(request):
-    if request.method == 'GET':
-        global username
-        output = '<table border=1 align=center>'
-        output+='<tr><th><font size=3 color=black>Consumer Name</font></th>'
-        output+='<th><font size=3 color=black>Farmer Name</font></th>'
-        output+='<th><font size=3 color=black>Product Name</font></th>'
-        output+='<th><font size=3 color=black>Quantity</font></th>'
-        output+='<th><font size=3 color=black>Amount</font></th>'
-        output+='<th><font size=3 color=black>Card Details</font></th>'
-        output+='<th><font size=3 color=black>CVV</font></th>'
-        output+='<th><font size=3 color=black>Purchase Date</font></th></tr>'
-        readDetails("purchase")
-        rows = details.split("\n")
-        for i in range(len(rows)-1):
-            arr = rows[i].split("#")
-            if arr[1] == username:
-                output+='<tr><td><font size=3 color=black>'+arr[0]+'</font></td>'
-                output+='<td><font size=3 color=black>'+arr[1]+'</font></td>'
-                output+='<td><font size=3 color=black>'+str(arr[2])+'</font></td>'
-                output+='<td><font size=3 color=black>'+str(arr[3])+'</font></td>'
-                output+='<td><font size=3 color=black>'+str(arr[4])+'</font></td>'
-                output+='<td><font size=3 color=black>'+str(arr[5])+'</font></td>'
-                output+='<td><font size=3 color=black>'+str(arr[6])+'</font></td>'
-                output+='<td><font size=3 color=black>'+str(arr[7])+'</font></td></tr>'                            
-        output+="</table><br/><br/><br/><br/><br/><br/>"
-        context= {'data':output}
-        return render(request, 'FarmerScreen.html', context)     
-    
+
+# ============================================================
+# PUBLIC VIEWS — No login required
+# ============================================================
+
 def index(request):
-    if request.method == 'GET':
-       return render(request, 'index.html', {})    
+    """Homepage — show all available products as guest browsing."""
+    ctx = get_base_context(request)
+    ctx['products'] = Product.objects.filter(is_available=True, quantity__gt=0)
+    ctx['total_farmers'] = UserProfile.objects.filter(user_type='Farmer', is_active=True).count()
+    ctx['total_products'] = Product.objects.filter(is_available=True).count()
+    ctx['total_consumers'] = UserProfile.objects.filter(user_type='Consumer', is_active=True).count()
+    return render(request, 'index.html', ctx)
 
-def AdminLogin(request):
-    if request.method == 'GET':
-       return render(request, 'AdminLogin.html', {})
 
-def FarmerLogin(request):
-    if request.method == 'GET':
-       return render(request, 'FarmerLogin.html', {})
+def product_detail(request, product_id):
+    """Public product detail page — shows farmer info, transport chain, QR."""
+    product = get_object_or_404(Product, pk=product_id)
+    transport_logs = product.transport_logs.all()
 
-def ConsumerLogin(request):
-    if request.method == 'GET':
-       return render(request, 'ConsumerLogin.html', {})    
-    
-def Register(request):
-    if request.method == 'GET':
-       return render(request, 'Register.html', {})
+    ctx = get_base_context(request)
+    ctx['product'] = product
+    ctx['transport_logs'] = transport_logs
+    ctx['farmer'] = product.farmer
 
-def UpdateQuantityAction(request):
+    # Build shareable URL
+    ngrok_url = get_ngrok_url()
+    base = ngrok_url if ngrok_url else request.build_absolute_uri('/')[:-1]
+    ctx['share_url'] = f"{base}/product/{product.pk}/"
+
+    return render(request, 'product_detail.html', ctx)
+
+
+# ============================================================
+# AUTH VIEWS
+# ============================================================
+
+def login_view(request):
+    """Unified login page with role selector."""
     if request.method == 'POST':
-        farmer = request.POST.get('t1', False)
-        pname = request.POST.get('t2', False)
-        quantity = request.POST.get('t3', False)
-        index = 0
-        record = ''
-        readDetails("addproduct")
-        rows = details.split("\n")
-        tot_qty = 0
-        for i in range(len(rows)-1):
-            arr = rows[i].split("#")
-            if arr[0] == "addproduct":
-                if arr[1] == farmer and arr[2] == pname:
-                    today = date.today()
-                    index = i
-                    record = arr[0]+"#"+arr[1]+"#"+arr[2]+"#"+arr[3]+"#"+str(float(arr[4])+float(quantity))+"#"+arr[5]+"#"+arr[6]+"#"+str(today)+"\n"
-                    break
-        for i in range(len(rows)-1):
-            if i != index:
-                record += rows[i]+"\n"
-        updateQuantityBlock(record)
-        context= {'data':"Quantity details updated"}
-        return render(request, 'AdminScreen.html', context)    
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '').strip()
+        user_type = request.POST.get('user_type', '').strip()
 
-def UpdateQuantity(request):
-    if request.method == 'GET':
-        global product_name
-        farmer = request.GET['farmer']
-        pname = request.GET['pname']
-        output = '<tr><td><font size="" color="black">Farmer&nbsp;Name</font></td>'
-        output += '<td><input type="text" name="t1" style="font-family: Comic Sans MS" size="30" value='+farmer+' readonly/></td></tr>'
-        output += '<tr><td><font size="" color="black">Product&nbsp;Name</font></td>'
-        output += '<td><input type="text" name="t2" style="font-family: Comic Sans MS" size="30" value='+pname+' readonly/></td></tr>'
-        output += '<tr><td><font size="" color="black">Quantity</font></td>'
-        output += '<td><input type="text" name="t3" style="font-family: Comic Sans MS" size="15" /></td></tr>'
-        context= {'data1':output}
-        return render(request, 'UpdateQuantity.html', context)      
+        if not username or not password:
+            messages.error(request, 'Please enter both username and password.')
+            return render(request, 'login.html', get_base_context(request))
 
-def UpdateProduct(request):
-    if request.method == 'GET':
-        output = '<table border=1 align=center>'
-        output+='<tr><th><font size=3 color=black>Farmer Name</font></th>'
-        output+='<th><font size=3 color=black>Product Name</font></th>'
-        output+='<th><font size=3 color=black>Price</font></th>'
-        output+='<th><font size=3 color=black>Quantity</font></th>'
-        output+='<th><font size=3 color=black>Description</font></th>'
-        output+='<th><font size=3 color=black>Image</font></th>'
-        output+='<th><font size=3 color=black>Date</font></th>'
-        output+='<th><font size=3 color=black>QR Code</font></th>'
-        output+='<th><font size=3 color=black>Update Quantity</font></th></tr>'
-        readDetails("addproduct")
-        rows = details.split("\n")
-        for i in range(len(rows)-1):
-            arr = rows[i].split("#")
-            if arr[0] == 'addproduct':
-                output+='<tr><td><font size=3 color=black>'+arr[1]+'</font></td>'
-                output+='<td><font size=3 color=black>'+arr[2]+'</font></td>'
-                output+='<td><font size=3 color=black>'+str(arr[3])+'</font></td>'
-                output+='<td><font size=3 color=black>'+str(arr[4])+'</font></td>'
-                output+='<td><font size=3 color=black>'+str(arr[5])+'</font></td>'
-                output+='<td><img src="/static/products/'+arr[6]+'" width="200" height="200"></img></td>'
-                output+='<td><font size=3 color=black>'+str(arr[7])+'</font></td>'
-                output+='<td><img src="/static/qrcode/'+arr[1]+arr[2]+'.png" width="200" height="200"></img></td>'
-                output+='<td><a href=\'UpdateQuantity?farmer="'+arr[1]+'"&pname="'+arr[2]+'"\'><font size=3 color=black>Click Here</font></a></td></tr>'                    
-        output+="</table><br/><br/><br/><br/><br/><br/>"
-        context= {'data':output}
-        return render(request, 'AdminScreen.html', context)      
+        # Admin special case
+        if user_type == 'Admin':
+            if username == 'admin' and password == 'admin':
+                request.session['user_id'] = 0
+                request.session['username'] = 'admin'
+                request.session['user_type'] = 'Admin'
+                messages.success(request, 'Welcome, Admin!')
+                return redirect('admin_dashboard')
+            else:
+                messages.error(request, 'Invalid admin credentials.')
+                return render(request, 'login.html', get_base_context(request))
 
-def AddProduct(request):
-    if request.method == 'GET':
-        output = '<tr><td><font size="" color="black">Farmer&nbsp;Name</font></td><td><select name="farmer">'
-        readDetails("signup")
-        rows = details.split("\n")
-        for i in range(len(rows)-1):
-            arr = rows[i].split("#")
-            if arr[0] == "signup":
-                output += '<option value="'+arr[1]+'">'+arr[1]+'</option>'
-        output += '</select></td></tr>'
-        context= {'data1': output}
-        return render(request, 'AddProduct.html', context)
+        # Farmer / Consumer login
+        try:
+            user = UserProfile.objects.get(
+                username=username, password=password,
+                user_type=user_type, is_active=True
+            )
+            request.session['user_id'] = user.pk
+            request.session['username'] = user.username
+            request.session['user_type'] = user.user_type
+            messages.success(request, f'Welcome, {user.username}!')
 
-def AddProductAction(request):
+            if user.user_type == 'Farmer':
+                return redirect('farmer_dashboard')
+            else:
+                return redirect('consumer_dashboard')
+
+        except UserProfile.DoesNotExist:
+            messages.error(request, 'Invalid credentials. Please check your username, password, and role.')
+
+    ctx = get_base_context(request)
+    return render(request, 'login.html', ctx)
+
+
+def register_view(request):
+    """Registration page for new farmers and consumers."""
     if request.method == 'POST':
-        farmer = request.POST.get('farmer', False)
-        cname = request.POST.get('t1', False)
-        qty = request.POST.get('t2', False)
-        price = request.POST.get('t3', False)
-        desc = request.POST.get('t4', False)
-        image = request.FILES['t5']
-        imagename = request.FILES['t5'].name
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '').strip()
+        contact = request.POST.get('contact', '').strip()
+        email = request.POST.get('email', '').strip()
+        address = request.POST.get('address', '').strip()
+        user_type = request.POST.get('user_type', 'Farmer')
 
-        status = "none"
-        readDetails("addproduct")
-        rows = details.split("\n")
-        for i in range(len(rows)-1):
-            arr = rows[i].split("#")
-            if arr[0] == "addproduct" and arr[1] == farmer and arr[2] == cname:
-                status = "Your Farming product already exists in Blockchain"
-                break
-        if status == "none":
-            today = date.today()
-            fs = FileSystemStorage()
-            filename = fs.save('AgricultureApp/static/products/'+imagename, image)
-            data = "addproduct#"+farmer+"#"+cname+"#"+price+"#"+qty+"#"+desc+"#"+imagename+"#"+str(today)+"\n"
-            saveDataBlockChain(data,"addproduct")
-            url = pyqrcode.create(farmer+cname)
-            url.png('AgricultureApp/static/qrcode/'+farmer+cname+'.png', scale = 6)
-            status = "Product details saved in Blockchain"
-        context= {'data':"Product details saved in Blockchain"}
-        return render(request, 'AdminScreen.html', context)    
+        if not username or not password:
+            messages.error(request, 'Username and password are required.')
+            return render(request, 'register.html', get_base_context(request))
 
-def Signup(request):
+        if UserProfile.objects.filter(username=username).exists():
+            messages.error(request, f'Username "{username}" already exists.')
+            return render(request, 'register.html', get_base_context(request))
+
+        # Create user in DB
+        user = UserProfile.objects.create(
+            username=username, password=password,
+            contact=contact, email=email, address=address,
+            user_type=user_type
+        )
+
+        # Save to blockchain
+        data = f"signup#{username}#{password}#{contact}#{email}#{address}#{user_type}\n"
+        receipt = blockchain.save_user(data)
+        if receipt:
+            user.blockchain_hash = str(receipt.get('transactionHash', ''))
+            user.save()
+
+        messages.success(request, 'Registration successful! You can now login.')
+        return redirect('login')
+
+    ctx = get_base_context(request)
+    return render(request, 'register.html', ctx)
+
+
+def logout_view(request):
+    """Logout and clear session."""
+    request.session.flush()
+    messages.info(request, 'You have been logged out.')
+    return redirect('index')
+
+
+# ============================================================
+# ADMIN VIEWS
+# ============================================================
+
+@admin_required
+def admin_dashboard(request):
+    """Admin dashboard with stats and user management."""
+    ctx = get_base_context(request)
+    ctx['farmers'] = UserProfile.objects.filter(user_type='Farmer')
+    ctx['consumers'] = UserProfile.objects.filter(user_type='Consumer')
+    ctx['products'] = Product.objects.all()
+    ctx['purchases'] = Purchase.objects.all()
+    ctx['total_sales'] = sum(p.total_amount for p in Purchase.objects.all())
+    return render(request, 'admin/dashboard.html', ctx)
+
+
+@admin_required
+def admin_add_user(request):
+    """Admin: Add a new farmer or consumer."""
     if request.method == 'POST':
-        username = request.POST.get('username', False)
-        password = request.POST.get('password', False)
-        contact = request.POST.get('contact', False)
-        email = request.POST.get('email', False)
-        address = request.POST.get('address', False)
-        usertype = request.POST.get('type', False)
-        record = 'none'
-        readDetails("signup")
-        rows = details.split("\n")
-        for i in range(len(rows)-1):
-            arr = rows[i].split("#")
-            if arr[0] == "signup":
-                if arr[1] == username:
-                    record = "exists"
-                    break
-        if record == 'none':
-            data = "signup#"+username+"#"+password+"#"+contact+"#"+email+"#"+address+"#"+usertype+"\n"
-            saveDataBlockChain(data,"signup")
-            context= {'data':'Signup process completd and record saved in Blockchain'}
-            return render(request, 'Register.html', context)
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '').strip()
+        email = request.POST.get('email', '').strip()
+        contact = request.POST.get('contact', '').strip()
+        address = request.POST.get('address', '').strip()
+        user_type = request.POST.get('user_type', 'Farmer')
+
+        if UserProfile.objects.filter(username=username).exists():
+            messages.error(request, f'Username "{username}" already exists.')
+        elif not username or not password:
+            messages.error(request, 'Username and password are required.')
         else:
-            context= {'data':username+'Username already exists'}
-            return render(request, 'Register.html', context)    
+            UserProfile.objects.create(
+                username=username, password=password,
+                email=email, contact=contact,
+                address=address, user_type=user_type
+            )
+            messages.success(request, f'{user_type} "{username}" added successfully.')
 
-def AdminLoginAction(request):
+        return redirect('admin_dashboard')
+
+    ctx = get_base_context(request)
+    return render(request, 'admin/add_user.html', ctx)
+
+
+@admin_required
+def admin_toggle_user(request, user_id):
+    """Admin: Activate/deactivate a user."""
+    try:
+        user = UserProfile.objects.get(pk=user_id)
+        user.is_active = not user.is_active
+        user.save()
+        status = 'activated' if user.is_active else 'deactivated'
+        messages.success(request, f'User "{user.username}" has been {status}.')
+    except UserProfile.DoesNotExist:
+        messages.error(request, 'User not found.')
+    return redirect('admin_dashboard')
+
+
+@admin_required
+def admin_delete_user(request, user_id):
+    """Admin: Delete a user permanently."""
+    try:
+        user = UserProfile.objects.get(pk=user_id)
+        name = user.username
+        user.delete()
+        messages.success(request, f'User "{name}" has been deleted.')
+    except UserProfile.DoesNotExist:
+        messages.error(request, 'User not found.')
+    return redirect('admin_dashboard')
+
+
+@admin_required
+def admin_view_sales(request):
+    """Admin: View all purchase/sales records."""
+    ctx = get_base_context(request)
+    ctx['purchases'] = Purchase.objects.select_related('consumer', 'product', 'farmer').all()
+    return render(request, 'admin/view_sales.html', ctx)
+
+
+# ============================================================
+# FARMER VIEWS
+# ============================================================
+
+@farmer_required
+def farmer_dashboard(request):
+    """Farmer dashboard — my products and sales overview."""
+    user = get_current_user(request)
+    ctx = get_base_context(request)
+    ctx['products'] = Product.objects.filter(farmer=user)
+    ctx['sales'] = Purchase.objects.filter(farmer=user)
+    ctx['total_sales'] = sum(s.total_amount for s in ctx['sales'])
+    return render(request, 'farmer/dashboard.html', ctx)
+
+
+@farmer_required
+def farmer_add_product(request):
+    """Farmer: Add a new product with transport details."""
+    user = get_current_user(request)
+
     if request.method == 'POST':
-        global username
-        username = request.POST.get('username', False)
-        password = request.POST.get('password', False)
-        status = "AdminLogin.html"
-        context= {'data':'Invalid login details'}
-        if username == 'admin' and password == 'admin':
-            context = {'data':"Welcome "+username}
-            status = "AdminScreen.html"
-        return render(request, status, context)         
+        name = request.POST.get('name', '').strip()
+        description = request.POST.get('description', '').strip()
+        price = request.POST.get('price', '0')
+        quantity = request.POST.get('quantity', '0')
+        category = request.POST.get('category', 'Other')
+        origin_location = request.POST.get('origin_location', '').strip()
+        harvest_date = request.POST.get('harvest_date', '')
 
-def FarmerLoginAction(request):
+        # Check duplicate
+        if Product.objects.filter(farmer=user, name=name).exists():
+            messages.error(request, f'Product "{name}" already exists.')
+            return redirect('farmer_add_product')
+
+        # Handle image upload
+        image_path = ''
+        if 'image' in request.FILES:
+            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'products'))
+            os.makedirs(fs.location, exist_ok=True)
+            filename = fs.save(request.FILES['image'].name, request.FILES['image'])
+            image_path = f'products/{filename}'
+
+        # Create product
+        product = Product.objects.create(
+            farmer=user, name=name, description=description,
+            price=float(price), quantity=float(quantity),
+            category=category, image=image_path,
+            origin_location=origin_location,
+            harvest_date=harvest_date if harvest_date else None,
+        )
+
+        # Generate QR code
+        ngrok_url = get_ngrok_url()
+        base = ngrok_url if ngrok_url else 'http://127.0.0.1:8000'
+        qr_path = generate_product_qr(product, base)
+        if qr_path:
+            product.qr_code = qr_path
+            product.save()
+
+        # Save to blockchain
+        data = f"addproduct#{user.username}#{name}#{price}#{quantity}#{description}#{str(date.today())}\n"
+        receipt = blockchain.save_product(data)
+        if receipt:
+            product.blockchain_hash = str(receipt.get('transactionHash', ''))
+            product.save()
+
+        # Add initial transport log
+        transport_location = request.POST.get('transport_location', '').strip()
+        if transport_location:
+            TransportLog.objects.create(
+                product=product, stage='Harvested',
+                location=transport_location,
+                handler=user.username,
+                notes=f'Product harvested at {origin_location}'
+            )
+
+        messages.success(request, f'Product "{name}" added successfully!')
+        return redirect('farmer_dashboard')
+
+    ctx = get_base_context(request)
+    return render(request, 'farmer/add_product.html', ctx)
+
+
+@farmer_required
+def farmer_update_product(request, product_id):
+    """Farmer: Update product quantity and add transport log."""
+    user = get_current_user(request)
+    product = get_object_or_404(Product, pk=product_id, farmer=user)
+
     if request.method == 'POST':
-        global username
-        username = request.POST.get('username', False)
-        password = request.POST.get('password', False)
-        status = "FarmerLogin.html"
-        context= {'data':'Invalid login details'}
-        readDetails("signup")
-        rows = details.split("\n")
-        for i in range(len(rows)-1):
-            arr = rows[i].split("#")
-            if arr[0] == "signup":
-                if arr[1] == username and arr[2] == password and arr[6] == 'Farmer':
-                    context = {'data':"Welcome "+username}
-                    status = 'FarmerScreen.html'
-                    break
-        return render(request, status, context)              
+        action = request.POST.get('action', '')
 
-def ConsumerLoginAction(request):
+        if action == 'update_quantity':
+            add_qty = float(request.POST.get('quantity', '0'))
+            product.quantity += add_qty
+            product.save()
+
+            # Update blockchain
+            blockchain_data = f"addproduct#{user.username}#{product.name}#{product.price}#{product.quantity}#{product.description}#{str(date.today())}\n"
+            blockchain.save_product(blockchain_data)
+
+            messages.success(request, f'Quantity updated to {product.quantity}.')
+
+        elif action == 'add_transport':
+            stage = request.POST.get('stage', '')
+            location = request.POST.get('location', '').strip()
+            handler = request.POST.get('handler', '').strip()
+            notes = request.POST.get('notes', '').strip()
+
+            if stage and location:
+                TransportLog.objects.create(
+                    product=product, stage=stage,
+                    location=location, handler=handler, notes=notes
+                )
+                messages.success(request, 'Transport log added.')
+            else:
+                messages.error(request, 'Stage and location are required.')
+
+        return redirect('farmer_update_product', product_id=product.pk)
+
+    ctx = get_base_context(request)
+    ctx['product'] = product
+    ctx['transport_logs'] = product.transport_logs.all()
+    return render(request, 'farmer/update_product.html', ctx)
+
+
+@farmer_required
+def farmer_view_sales(request):
+    """Farmer: View my sales."""
+    user = get_current_user(request)
+    ctx = get_base_context(request)
+    ctx['sales'] = Purchase.objects.filter(farmer=user).select_related('consumer', 'product')
+    return render(request, 'farmer/view_sales.html', ctx)
+
+
+# ============================================================
+# CONSUMER VIEWS
+# ============================================================
+
+@consumer_required
+def consumer_dashboard(request):
+    """Consumer dashboard — browse products and view purchase history."""
+    ctx = get_base_context(request)
+    ctx['products'] = Product.objects.filter(is_available=True, quantity__gt=0)
+    ctx['purchases'] = Purchase.objects.filter(
+        consumer=get_current_user(request)
+    ).select_related('product', 'farmer')
+    return render(request, 'consumer/dashboard.html', ctx)
+
+
+@consumer_required
+def consumer_purchase(request, product_id):
+    """Consumer: Purchase a product."""
+    user = get_current_user(request)
+    product = get_object_or_404(Product, pk=product_id, is_available=True)
+
     if request.method == 'POST':
-        global username
-        username = request.POST.get('username', False)
-        password = request.POST.get('password', False)
-        status = "ConsumerLogin.html"
-        context= {'data':'Invalid login details'}
-        readDetails("signup")
-        rows = details.split("\n")
-        for i in range(len(rows)-1):
-            arr = rows[i].split("#")
-            if arr[0] == "signup":
-                if arr[1] == username and arr[2] == password and arr[6] == 'Consumer':
-                    context = {'data':"Welcome "+username}
-                    status = 'ConsumerScreen.html'
-                    break
-        return render(request, status, context)
+        quantity = float(request.POST.get('quantity', '1'))
 
+        if quantity > float(product.quantity):
+            messages.error(request, f'Only {product.quantity} available.')
+            return redirect('consumer_purchase', product_id=product.pk)
 
-def UpdateFarmerQuantityAction(request):
-    if request.method == 'POST':
-        farmer = request.POST.get('t1', False)
-        pname = request.POST.get('t2', False)
-        quantity = request.POST.get('t3', False)
-        index = 0
-        record = ''
-        readDetails("addproduct")
-        rows = details.split("\n")
-        tot_qty = 0
-        for i in range(len(rows)-1):
-            arr = rows[i].split("#")
-            if arr[0] == "addproduct":
-                if arr[1] == farmer and arr[2] == pname:
-                    today = date.today()
-                    index = i
-                    record = arr[0]+"#"+arr[1]+"#"+arr[2]+"#"+arr[3]+"#"+str(float(arr[4])+float(quantity))+"#"+arr[5]+"#"+arr[6]+"#"+str(today)+"\n"
-                    break
-        for i in range(len(rows)-1):
-            if i != index:
-                record += rows[i]+"\n"
-        updateQuantityBlock(record)
-        context= {'data':"Quantity details updated"}
-        return render(request, 'FarmerScreen.html', context)    
+        total = float(product.price) * quantity
 
-def UpdateFarmerQuantity(request):
-    if request.method == 'GET':
-        global product_name
-        farmer = request.GET['farmer']
-        pname = request.GET['pname']
-        output = '<tr><td><font size="" color="black">Farmer&nbsp;Name</font></td>'
-        output += '<td><input type="text" name="t1" style="font-family: Comic Sans MS" size="30" value='+farmer+' readonly/></td></tr>'
-        output += '<tr><td><font size="" color="black">Product&nbsp;Name</font></td>'
-        output += '<td><input type="text" name="t2" style="font-family: Comic Sans MS" size="30" value='+pname+' readonly/></td></tr>'
-        output += '<tr><td><font size="" color="black">Quantity</font></td>'
-        output += '<td><input type="text" name="t3" style="font-family: Comic Sans MS" size="15" /></td></tr>'
-        context= {'data1':output}
-        return render(request, 'UpdateFarmerQuantity.html', context)      
+        # Create purchase
+        purchase = Purchase.objects.create(
+            consumer=user, product=product,
+            farmer=product.farmer,
+            quantity=quantity, total_amount=total
+        )
 
-def UpdateFarmerProduct(request):
-    if request.method == 'GET':
-        global username
-        output = '<table border=1 align=center>'
-        output+='<tr><th><font size=3 color=black>Farmer Name</font></th>'
-        output+='<th><font size=3 color=black>Product Name</font></th>'
-        output+='<th><font size=3 color=black>Price</font></th>'
-        output+='<th><font size=3 color=black>Quantity</font></th>'
-        output+='<th><font size=3 color=black>Description</font></th>'
-        output+='<th><font size=3 color=black>Image</font></th>'
-        output+='<th><font size=3 color=black>Date</font></th>'
-        output+='<th><font size=3 color=black>QR Code</font></th>'
-        output+='<th><font size=3 color=black>Update Quantity</font></th></tr>'
-        readDetails("addproduct")
-        rows = details.split("\n")
-        for i in range(len(rows)-1):
-            arr = rows[i].split("#")
-            if arr[0] == 'addproduct' and arr[1] == username:
-                output+='<tr><td><font size=3 color=black>'+arr[1]+'</font></td>'
-                output+='<td><font size=3 color=black>'+arr[2]+'</font></td>'
-                output+='<td><font size=3 color=black>'+str(arr[3])+'</font></td>'
-                output+='<td><font size=3 color=black>'+str(arr[4])+'</font></td>'
-                output+='<td><font size=3 color=black>'+str(arr[5])+'</font></td>'
-                output+='<td><img src="/static/products/'+arr[6]+'" width="200" height="200"></img></td>'
-                output+='<td><font size=3 color=black>'+str(arr[7])+'</font></td>'
-                output+='<td><img src="/static/qrcode/'+arr[1]+arr[2]+'.png" width="200" height="200"></img></td>'
-                output+='<td><a href=\'UpdateFarmerQuantity?farmer="'+arr[1]+'"&pname="'+arr[2]+'"\'><font size=3 color=black>Click Here</font></a></td></tr>'                    
-        output+="</table><br/><br/><br/><br/><br/><br/>"
-        context= {'data':output}
-        return render(request, 'FarmerScreen.html', context)      
+        # Update product quantity
+        product.quantity -= quantity
+        if product.quantity <= 0:
+            product.is_available = False
+        product.save()
 
-def AddFarmerProduct(request):
-    if request.method == 'GET':
-        return render(request, 'AddFarmerProduct.html', {})
+        # Save to blockchain
+        data = f"{user.username}#{product.farmer.username}#{product.name}#{quantity}#{total}#{str(date.today())}\n"
+        receipt = blockchain.save_purchase(data)
+        if receipt:
+            purchase.blockchain_hash = str(receipt.get('transactionHash', ''))
+            purchase.save()
 
-def AddFarmerProductAction(request):
-    if request.method == 'POST':
-        global username
-        farmer = username
-        cname = request.POST.get('t1', False)
-        qty = request.POST.get('t2', False)
-        price = request.POST.get('t3', False)
-        desc = request.POST.get('t4', False)
-        image = request.FILES['t5']
-        imagename = request.FILES['t5'].name
+        # Add transport log for purchase
+        TransportLog.objects.create(
+            product=product, stage='Delivered',
+            location=user.address or 'Customer Location',
+            handler='Delivery Service',
+            notes=f'Purchased by {user.username} — Qty: {quantity}'
+        )
 
-        status = "none"
-        readDetails("addproduct")
-        rows = details.split("\n")
-        for i in range(len(rows)-1):
-            arr = rows[i].split("#")
-            if arr[0] == "addproduct" and arr[1] == farmer and arr[2] == cname:
-                status = "Your Farming product already exists in Blockchain"
-                break
-        if status == "none":
-            today = date.today()
-            fs = FileSystemStorage()
-            filename = fs.save('AgricultureApp/static/products/'+imagename, image)
-            data = "addproduct#"+farmer+"#"+cname+"#"+price+"#"+qty+"#"+desc+"#"+imagename+"#"+str(today)+"\n"
-            saveDataBlockChain(data,"addproduct")
-            url = pyqrcode.create(farmer+cname)
-            url.png('AgricultureApp/static/qrcode/'+farmer+cname+'.png', scale = 6)
-            status = "Product details saved in Blockchain"
-        context= {'data':"Product details saved in Blockchain"}
-        return render(request, 'FarmerScreen.html', context)
+        messages.success(request, f'Purchase successful! Total: ₹{total:.2f}')
+        return redirect('consumer_dashboard')
 
-
-def PurchaseAction(request):
-    if request.method == 'GET':
-        global username
-        farmer = request.GET['farmer']
-        pname = request.GET['pname']
-        price = request.GET['price']
-        output = '<tr><td><font size="" color="black">Farmer&nbsp;Name</font></td>'
-        output += '<td><input type="text" name="t1" style="font-family: Comic Sans MS" size="30" value='+farmer+' readonly/></td></tr>'
-        output += '<tr><td><font size="" color="black">Product&nbsp;Name</font></td>'
-        output += '<td><input type="text" name="t2" style="font-family: Comic Sans MS" size="30" value='+pname+' readonly/></td></tr>'
-        output += '<tr><td><font size="" color="black">Product&nbsp;Price</font></td>'
-        output += '<td><input type="text" name="t3" style="font-family: Comic Sans MS" size="15" value='+price+' readonly/></td></tr>'
-        context= {'data1':output}
-        return render(request, 'Purchase.html', context)   
-
-
-def Purchase(request):
-    if request.method == 'GET':
-        output = '<table border=1 align=center>'
-        output+='<tr><th><font size=3 color=black>Farmer Name</font></th>'
-        output+='<th><font size=3 color=black>Product Name</font></th>'
-        output+='<th><font size=3 color=black>Price</font></th>'
-        output+='<th><font size=3 color=black>Quantity</font></th>'
-        output+='<th><font size=3 color=black>Description</font></th>'
-        output+='<th><font size=3 color=black>Image</font></th>'
-        output+='<th><font size=3 color=black>Date</font></th>'
-        output+='<th><font size=3 color=black>QR Code</font></th>'
-        output+='<th><font size=3 color=black>Update Quantity</font></th></tr>'
-        readDetails("addproduct")
-        rows = details.split("\n")
-        for i in range(len(rows)-1):
-            arr = rows[i].split("#")
-            if arr[0] == 'addproduct':
-                output+='<tr><td><font size=3 color=black>'+arr[1]+'</font></td>'
-                output+='<td><font size=3 color=black>'+arr[2]+'</font></td>'
-                output+='<td><font size=3 color=black>'+str(arr[3])+'</font></td>'
-                output+='<td><font size=3 color=black>'+str(arr[4])+'</font></td>'
-                output+='<td><font size=3 color=black>'+str(arr[5])+'</font></td>'
-                output+='<td><img src="/static/products/'+arr[6]+'" width="200" height="200"></img></td>'
-                output+='<td><font size=3 color=black>'+str(arr[7])+'</font></td>'
-                output+='<td><img src="/static/qrcode/'+arr[1]+arr[2]+'.png" width="200" height="200"></img></td>'
-                output+='<td><a href=\'PurchaseAction?farmer="'+arr[1]+'"&pname="'+arr[2]+'"&price="'+arr[3]+'"\'><font size=3 color=black>Click Here</font></a></td></tr>'                    
-        output+="</table><br/><br/><br/><br/><br/><br/>"
-        context= {'data':output}
-        return render(request, 'ConsumerScreen.html', context)      
-
-def SavePurchase(request):
-    if request.method == 'POST':
-        global username
-        farmer = request.POST.get('t1', False)
-        pname = request.POST.get('t2', False)
-        price = request.POST.get('t3', False)
-        qty = request.POST.get('t4', False)
-        card = request.POST.get('t5', False)
-        cvv = request.POST.get('t6', False)
-        today = date.today()
-        data = username+"#"+farmer+"#"+pname+"#"+qty+"#"+str(float(price)*float(qty))+"#"+card+"#"+cvv+"#"+str(today)+"\n"
-        saveDataBlockChain(data,"purchase")
-        status = "Your Purchase details saved in Blockchain<br/>Total Amount = "+str(float(price)*float(qty))
-        context= {'data':status}
-        return render(request, 'ConsumerScreen.html', context)
-
-
-
-    
+    ctx = get_base_context(request)
+    ctx['product'] = product
+    ctx['farmer'] = product.farmer
+    return render(request, 'consumer/purchase.html', ctx)

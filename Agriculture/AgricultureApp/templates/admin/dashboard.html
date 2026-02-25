@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="mt-4">
+    <h2 class="section-header"><i class="bi bi-speedometer2 text-accent me-2"></i>Admin Dashboard</h2>
+    <p class="section-subheader">Manage farmers, consumers, products and sales</p>
+
+    <!-- Stats Row -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="dash-card">
+                <div class="dash-icon green"><i class="bi bi-person-workspace"></i></div>
+                <h3 class="mb-1" style="font-weight: 700;">{{ farmers|length }}</h3>
+                <p class="text-muted-custom mb-0">Farmers</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="dash-card">
+                <div class="dash-icon blue"><i class="bi bi-people"></i></div>
+                <h3 class="mb-1" style="font-weight: 700;">{{ consumers|length }}</h3>
+                <p class="text-muted-custom mb-0">Consumers</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="dash-card">
+                <div class="dash-icon orange"><i class="bi bi-box-seam"></i></div>
+                <h3 class="mb-1" style="font-weight: 700;">{{ products|length }}</h3>
+                <p class="text-muted-custom mb-0">Products</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="dash-card">
+                <div class="dash-icon red"><i class="bi bi-currency-rupee"></i></div>
+                <h3 class="mb-1" style="font-weight: 700;">₹{{ total_sales }}</h3>
+                <p class="text-muted-custom mb-0">Total Sales</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Farmers -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 style="font-weight: 700;"><i class="bi bi-person-workspace text-accent me-2"></i>Farmers</h4>
+        <a href="{% url 'admin_add_user' %}" class="btn btn-accent btn-sm">
+            <i class="bi bi-person-plus me-1"></i>Add User
+        </a>
+    </div>
+    <div class="table-responsive mb-5">
+        <table class="table table-dark-custom">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Contact</th>
+                    <th>Address</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for farmer in farmers %}
+                <tr>
+                    <td><strong>{{ farmer.username }}</strong></td>
+                    <td>{{ farmer.email|default:"-" }}</td>
+                    <td>{{ farmer.contact|default:"-" }}</td>
+                    <td>{{ farmer.address|default:"-"|truncatechars:30 }}</td>
+                    <td>
+                        {% if farmer.is_active %}
+                        <span class="product-badge"
+                            style="background: rgba(42,157,143,0.15); color: var(--success);">Active</span>
+                        {% else %}
+                        <span class="product-badge"
+                            style="background: rgba(230,57,70,0.15); color: var(--danger);">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'admin_toggle_user' farmer.pk %}" class="btn btn-sm btn-outline-light me-1"
+                            title="Toggle Status">
+                            <i class="bi bi-toggle-{% if farmer.is_active %}on{% else %}off{% endif %}"></i>
+                        </a>
+                        <a href="{% url 'admin_delete_user' farmer.pk %}" class="btn btn-sm btn-outline-danger"
+                            title="Delete" onclick="return confirm('Delete {{ farmer.username }}?');">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-3" style="color: var(--text-muted);">No farmers registered yet
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Manage Consumers -->
+    <h4 style="font-weight: 700;" class="mb-3"><i class="bi bi-people text-accent me-2"></i>Consumers</h4>
+    <div class="table-responsive">
+        <table class="table table-dark-custom">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Contact</th>
+                    <th>Address</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for consumer in consumers %}
+                <tr>
+                    <td><strong>{{ consumer.username }}</strong></td>
+                    <td>{{ consumer.email|default:"-" }}</td>
+                    <td>{{ consumer.contact|default:"-" }}</td>
+                    <td>{{ consumer.address|default:"-"|truncatechars:30 }}</td>
+                    <td>
+                        {% if consumer.is_active %}
+                        <span class="product-badge"
+                            style="background: rgba(42,157,143,0.15); color: var(--success);">Active</span>
+                        {% else %}
+                        <span class="product-badge"
+                            style="background: rgba(230,57,70,0.15); color: var(--danger);">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'admin_toggle_user' consumer.pk %}" class="btn btn-sm btn-outline-light me-1"
+                            title="Toggle Status">
+                            <i class="bi bi-toggle-{% if consumer.is_active %}on{% else %}off{% endif %}"></i>
+                        </a>
+                        <a href="{% url 'admin_delete_user' consumer.pk %}" class="btn btn-sm btn-outline-danger"
+                            title="Delete" onclick="return confirm('Delete {{ consumer.username }}?');">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-3" style="color: var(--text-muted);">No consumers registered
+                        yet</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
