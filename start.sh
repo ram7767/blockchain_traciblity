@@ -13,6 +13,12 @@ echo "   ║   AgriChain — Blockchain Agricultural Traceability   ║"
 echo "   ╚══════════════════════════════════════════════════════╝"
 echo ""
 
+# --- Step 0: Kill stale processes ---
+echo "🔄 Cleaning up stale processes..."
+lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+pkill -f ngrok 2>/dev/null || true
+sleep 1
+
 # --- Step 1: Python Virtual Environment ---
 if [ ! -d "venv" ]; then
     echo "📦 Creating Python virtual environment..."

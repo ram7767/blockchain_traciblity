@@ -74,6 +74,17 @@ def product_detail(request, product_id):
     base = ngrok_url if ngrok_url else request.build_absolute_uri('/')[:-1]
     ctx['share_url'] = f"{base}/product/{product.pk}/"
 
+    # Auto-generate QR code if missing
+    if not product.qr_code:
+        try:
+            from .services.qr_service import generate_product_qr
+            qr_path = generate_product_qr(product, base)
+            if qr_path:
+                product.qr_code = qr_path
+                product.save()
+        except Exception:
+            pass
+
     return render(request, 'product_detail.html', ctx)
 
 

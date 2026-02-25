@@ -32,23 +32,30 @@
                 </p>
 
                 <div class="row g-3 mb-4">
-                    <div class="col-4">
+                    <div class="col-3">
                         <div class="info-card text-center">
                             <div class="info-label">Price</div>
                             <div class="info-value text-accent">₹{{ product.price }}</div>
                         </div>
                     </div>
-                    <div class="col-4">
+                    <div class="col-3">
                         <div class="info-card text-center">
                             <div class="info-label">Available</div>
                             <div class="info-value">{{ product.quantity }}</div>
                         </div>
                     </div>
-                    <div class="col-4">
+                    <div class="col-3">
                         <div class="info-card text-center">
                             <div class="info-label">Origin</div>
-                            <div class="info-value" style="font-size: 0.9rem;">{{ product.origin_location|default:"Local
-                                Farm" }}</div>
+                            <div class="info-value" style="font-size: 0.75rem;">{{
+                                product.origin_location|default:"Local Farm" }}</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="info-card text-center">
+                            <div class="info-label">Harvest</div>
+                            <div class="info-value" style="font-size: 0.75rem;">{{ product.harvest_date|date:"M d,
+                                Y"|default:"—" }}</div>
                         </div>
                     </div>
                 </div>
@@ -73,25 +80,24 @@
         <div class="row g-5">
             <!-- Farmer Details -->
             <div class="col-lg-4">
-                <h4 class="mb-3"><i class="bi bi-person-badge text-accent me-2"></i>Farmer Details</h4>
+                <h4 class="mb-3" style="font-weight: 700;"><i class="bi bi-person-badge text-accent me-2"></i>Farmer
+                    Details</h4>
                 <div class="info-card mb-3">
                     <div class="info-label">Name</div>
                     <div class="info-value">{{ farmer.username }}</div>
                 </div>
                 <div class="info-card mb-3">
-                    <div class="info-label">Location</div>
+                    <div class="info-label"><i class="bi bi-geo-alt me-1"></i>Location</div>
                     <div class="info-value">{{ farmer.address|default:"Not specified" }}</div>
                 </div>
                 <div class="info-card mb-3">
-                    <div class="info-label">Contact</div>
+                    <div class="info-label"><i class="bi bi-telephone me-1"></i>Contact</div>
                     <div class="info-value">{{ farmer.contact|default:"Not specified" }}</div>
                 </div>
-                {% if product.harvest_date %}
                 <div class="info-card mb-3">
-                    <div class="info-label">Harvest Date</div>
-                    <div class="info-value">{{ product.harvest_date }}</div>
+                    <div class="info-label"><i class="bi bi-geo me-1"></i>Product Origin</div>
+                    <div class="info-value">{{ product.origin_location|default:"Not specified" }}</div>
                 </div>
-                {% endif %}
                 {% if product.blockchain_hash %}
                 <div class="info-card mb-3">
                     <div class="info-label"><i class="bi bi-link-45deg me-1"></i>Blockchain Hash</div>
@@ -99,11 +105,39 @@
                         product.blockchain_hash }}</div>
                 </div>
                 {% endif %}
+
+                <!-- QR Code & Share -->
+                <h4 class="mb-3 mt-4" style="font-weight: 700;"><i class="bi bi-qr-code text-accent me-2"></i>Scan &
+                    Share</h4>
+                <div class="info-card text-center">
+                    {% if product.qr_code %}
+                    <div class="qr-container mb-3"
+                        style="background: #fff; padding: 16px; border-radius: 12px; display: inline-block;">
+                        <img src="/media/{{ product.qr_code }}" alt="Product QR Code"
+                            style="width: 180px; height: 180px; image-rendering: pixelated;">
+                    </div>
+                    <p class="small mb-2" style="color: var(--text-muted);">Scan to view this product</p>
+                    {% else %}
+                    <div class="mb-3 py-3">
+                        <i class="bi bi-qr-code display-4 text-muted-custom"></i>
+                        <p class="text-muted-custom small mt-2 mb-0">QR code will appear on next visit</p>
+                    </div>
+                    {% endif %}
+                    <p class="small mb-2" style="color: var(--text-muted); font-weight: 600;">Shareable Link</p>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control" value="{{ share_url }}" id="shareUrl" readonly
+                            style="font-size: 0.75rem;">
+                        <button class="btn btn-accent" onclick="copyUrl()" id="copyBtn" title="Copy URL">
+                            <i class="bi bi-clipboard" id="copyIcon"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Transport Timeline -->
-            <div class="col-lg-5">
-                <h4 class="mb-3"><i class="bi bi-truck text-accent me-2"></i>Supply Chain Journey</h4>
+            <div class="col-lg-8">
+                <h4 class="mb-3" style="font-weight: 700;"><i class="bi bi-truck text-accent me-2"></i>Supply Chain
+                    Journey</h4>
                 {% if transport_logs %}
                 <div class="timeline">
                     {% for log in transport_logs %}
@@ -132,28 +166,9 @@
                 {% else %}
                 <div class="info-card text-center py-4">
                     <i class="bi bi-clock-history display-4 text-muted-custom"></i>
-                    <p class="text-muted-custom mt-2 mb-0">No transport logs yet</p>
+                    <p class="text-muted-custom mt-2 mb-0">No transport logs available yet</p>
                 </div>
                 {% endif %}
-            </div>
-
-            <!-- QR Code & Share -->
-            <div class="col-lg-3">
-                <h4 class="mb-3"><i class="bi bi-qr-code text-accent me-2"></i>Scan & Share</h4>
-                <div class="info-card text-center">
-                    {% if product.qr_code %}
-                    <div class="qr-container mb-3">
-                        <img src="/media/{{ product.qr_code }}" alt="Product QR Code">
-                    </div>
-                    {% endif %}
-                    <p class="small mb-2" style="color: var(--text-muted);">Shareable Link:</p>
-                    <div class="input-group input-group-sm">
-                        <input type="text" class="form-control" value="{{ share_url }}" id="shareUrl" readonly>
-                        <button class="btn btn-accent" onclick="copyUrl()" title="Copy">
-                            <i class="bi bi-clipboard"></i>
-                        </button>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -165,8 +180,23 @@
     function copyUrl() {
         var input = document.getElementById('shareUrl');
         input.select();
-        document.execCommand('copy');
-        alert('URL copied to clipboard!');
+        input.setSelectionRange(0, 99999);
+
+        navigator.clipboard.writeText(input.value).then(function () {
+            var btn = document.getElementById('copyBtn');
+            var icon = document.getElementById('copyIcon');
+            icon.className = 'bi bi-check-lg';
+            btn.classList.add('btn-success');
+            btn.classList.remove('btn-accent');
+            setTimeout(function () {
+                icon.className = 'bi bi-clipboard';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-accent');
+            }, 2000);
+        }).catch(function () {
+            document.execCommand('copy');
+            alert('URL copied!');
+        });
     }
 </script>
 {% endblock %}

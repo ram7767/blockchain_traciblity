@@ -4,10 +4,13 @@ Seeds the database with sample farmers, consumers, 100+ products, and transport 
 Idempotent — only seeds if the database is empty.
 """
 
+import os
 import random
 from datetime import date, timedelta
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from AgricultureApp.models import UserProfile, Product, TransportLog, Purchase
+from AgricultureApp.services.image_generator import generate_product_image
 
 
 class Command(BaseCommand):
@@ -229,12 +232,20 @@ class Command(BaseCommand):
             'Warehouse Team', 'Quality Inspector'
         ]
 
+        # Generate product images
+        images_dir = os.path.join(settings.MEDIA_ROOT, 'products')
+        os.makedirs(images_dir, exist_ok=True)
+        self.stdout.write('  🖼️  Generating product images...')
+
         all_products = []
         for i, (name, category, price, description, origin) in enumerate(products_catalog):
             farmer = farmers[i % len(farmers)]
             days_ago = random.randint(1, 60)
             harvest = date.today() - timedelta(days=days_ago)
             qty = random.choice([10, 15, 20, 25, 30, 50, 75, 100, 150, 200, 500])
+
+            # Generate product image
+            image_path = generate_product_image(name, category, images_dir, index=i)
 
             product = Product.objects.create(
                 farmer=farmer,
@@ -245,6 +256,7 @@ class Command(BaseCommand):
                 category=category,
                 origin_location=origin,
                 harvest_date=harvest,
+                image=image_path,
             )
             all_products.append(product)
 
