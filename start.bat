@@ -35,6 +35,10 @@ cd Agriculture
 python manage.py makemigrations AgricultureApp --verbosity 0 2>nul
 python manage.py migrate --run-syncdb --verbosity 0
 
+REM --- Step 4b: Seed sample data ---
+echo [*] Checking sample data...
+python manage.py seed_data
+
 REM --- Step 5: Try Ganache ---
 echo.
 where ganache-cli >nul 2>nul

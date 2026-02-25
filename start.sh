@@ -35,6 +35,10 @@ cd Agriculture
 python manage.py makemigrations AgricultureApp --verbosity 0 2>/dev/null || true
 python manage.py migrate --run-syncdb --verbosity 0
 
+# --- Step 4b: Seed sample data (if new DB) ---
+echo "🌱 Checking sample data..."
+python manage.py seed_data
+
 # --- Step 5: Try to start Ganache blockchain (optional) ---
 echo ""
 BLOCKCHAIN_STATUS="❌ Offline (SQLite-only mode)"
@@ -59,6 +63,9 @@ fi
 echo ""
 NGROK_URL="Not available"
 if python -c "import pyngrok" 2>/dev/null; then
+    # Kill any stale ngrok sessions first
+    python -c "from pyngrok import ngrok; ngrok.kill()" 2>/dev/null || true
+    sleep 1
     echo "🌐 Starting ngrok tunnel..."
     NGROK_URL=$(python -c "
 from pyngrok import ngrok
@@ -67,7 +74,7 @@ try:
     print(tunnel.public_url)
 except Exception as e:
     print('Failed: ' + str(e))
-" 2>/dev/null)
+" 2>/dev/null) || true
     if [[ "$NGROK_URL" == Failed* ]] || [[ -z "$NGROK_URL" ]]; then
         NGROK_URL="Not available (set NGROK_AUTHTOKEN or run: ngrok config add-authtoken YOUR_TOKEN)"
     fi

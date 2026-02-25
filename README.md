@@ -91,9 +91,10 @@ The script automatically:
 1. Creates a Python virtual environment
 2. Installs all dependencies
 3. Runs database migrations
-4. Starts Ganache blockchain *(if installed)*
-5. Opens ngrok tunnel *(if configured)*
-6. Starts Django server at `http://127.0.0.1:8000`
+4. **Seeds 110 products, 5 farmers, 5 consumers** (auto on fresh DB)
+5. Starts Ganache blockchain *(if installed)*
+6. Opens ngrok tunnel *(if configured)* — **public URL printed to terminal**
+7. Starts Django server at `http://127.0.0.1:8000`
 
 ### Manual Setup
 
@@ -105,23 +106,60 @@ source venv/bin/activate    # Windows: venv\Scripts\activate
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Run migrations
+# 3. Run migrations + seed
 cd Agriculture
 python manage.py makemigrations AgricultureApp
 python manage.py migrate
+python manage.py seed_data
 
 # 4. Start server
 python manage.py runserver 0.0.0.0:8000
 ```
 
-## User Roles
+## Sample Accounts
 
-| Role | Credentials | Capabilities |
-|------|------------|--------------|
-| **Admin** | `admin / admin` | Manage farmers & consumers, view all sales |
-| **Farmer** | Register first | Add products, update quantity, add transport logs, view sales |
-| **Consumer** | Register first | Browse products, view traceability, purchase |
-| **Guest** | No login needed | Browse all products on homepage |
+> The database is **auto-seeded** with sample data on first run. All accounts below are ready to use.
+
+### 🔐 Admin
+
+| Username | Password | Access |
+|----------|----------|--------|
+| `admin` | `admin` | Full system management |
+
+### 👨‍🌾 Farmers (password: `farmer123`)
+
+| Username | Email | Location |
+|----------|-------|----------|
+| `rajesh_kumar` | rajesh@agrichain.com | Chandpur, Pune, Maharashtra |
+| `anitha_devi` | anitha@agrichain.com | Kothagudem, Telangana |
+| `suresh_reddy` | suresh@agrichain.com | Anantapur, Andhra Pradesh |
+| `lakshmi_bai` | lakshmi@agrichain.com | Hosur, Tamil Nadu |
+| `mohan_singh` | mohan@agrichain.com | Karnal, Haryana |
+
+### 🛒 Consumers (password: `customer123`)
+
+| Username | Email | Location |
+|----------|-------|----------|
+| `priya_sharma` | priya@email.com | Banjara Hills, Hyderabad |
+| `amit_patel` | amit@email.com | Koramangala, Bangalore |
+| `sneha_gupta` | sneha@email.com | Andheri West, Mumbai |
+| `vikram_joshi` | vikram@email.com | Connaught Place, New Delhi |
+| `divya_nair` | divya@email.com | T. Nagar, Chennai |
+
+### 👤 Guest
+
+No login needed — browse all 110+ products on the homepage directly.
+
+## Sample Data (Auto-Seeded)
+
+| Category | Count | Examples |
+|----------|-------|---------|
+| 🍎 Fruits | 25 | Alphonso Mango, Kashmir Apple, Dragon Fruit, Saffron... |
+| 🥬 Vegetables | 30 | Organic Tomato, Baby Spinach, Broccoli, Mushroom... |
+| 🌾 Grains | 25 | Basmati Rice, Quinoa, Toor Dal, Chia Seeds... |
+| 🥛 Dairy | 15 | A2 Cow Milk, Desi Ghee, Fresh Paneer, Raw Honey... |
+| 📦 Other | 15 | Kashmiri Saffron, Coffee Beans, Cashew Nuts... |
+| **Total** | **110** | Each with transport logs and traceability |
 
 ## Key Features
 
